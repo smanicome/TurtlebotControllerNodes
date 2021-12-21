@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import select
 import socket
 import struct
+import sys
 
 import numpy
 import rospy
@@ -17,28 +19,35 @@ def handle_inputs():
     vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=5)
     data = b""
     while True:
-        data += inputControlConnexion.recv(1024)
-        x = struct.unpack('f', data[:4])[0]
-        z = struct.unpack('f', data[4:8])[0]
-        data = data[8:]
+        try:
+            ready_to_read, ready_to_write, in_error = \
+                select.select([inputControlConnexion, ], [], [], 5)
+            if ready_to_read:
+                data += inputControlConnexion.recv(1024)
+                x = struct.unpack('f', data[:4])[0]
+                z = struct.unpack('f', data[4:8])[0]
+                data = data[8:]
 
-        if 90 <= z <= 270:
-            speed = -x / 5
-        else:
-            speed = x / 5
+                if 90 <= z <= 270:
+                    speed = -x / 5
+                else:
+                    speed = x / 5
 
-        if 0 <= z <= 180:
-            angle = -z / 360
-        else:
-            angle = (360 - z) / 360
+                if 0 <= z <= 180:
+                    angle = -z / 360
+                else:
+                    angle = (360 - z) / 360
 
-        print("Speed: " + str(speed) + " Angle: " + str(angle))
+                print("Speed: " + str(speed) + " Angle: " + str(angle))
 
-        msg = Twist()
-        msg.linear.x = speed
-        msg.angular.z = angle
-        vel_pub.publish(msg)
-
+                msg = Twist()
+                msg.linear.x = speed
+                msg.angular.z = angle
+                vel_pub.publish(msg)
+        except (select.error, struct.error):
+            print('Connexion closed, terminating node')
+            inputControlConnexion.close()
+            sys.exit()
 
 
 if __name__ == '__main__':

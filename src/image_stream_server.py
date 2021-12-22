@@ -21,7 +21,7 @@ def send_image(image):
                 result, img_encode = cv2.imencode('.jpg', br.imgmsg_to_cv2(image), encode_param)
                 img_data = numpy.array(img_encode)
                 string_data = img_data.tostring()
-                streamConnexion.send(len(string_data).to_bytes(length=2, byteorder="big"))
+                streamConnexion.send(len(string_data).to_bytes(length=8, byteorder="big"))
                 streamConnexion.send(string_data)
             except CvBridgeError as e:
                 rospy.logerr(e)
